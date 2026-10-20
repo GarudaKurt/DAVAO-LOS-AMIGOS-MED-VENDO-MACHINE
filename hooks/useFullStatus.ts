@@ -30,6 +30,7 @@ export function useFallStatus(): UseFallStatusResult {
     const supabase = supabaseRef.current;
     let isMounted = true;
     let channel: ReturnType<typeof supabase.channel> | null = null;
+    let refreshInterval: ReturnType<typeof setInterval> | null = null;
 
     const init = async () => {
       const {
@@ -42,24 +43,18 @@ export function useFallStatus(): UseFallStatusResult {
         return;
       }
 
-      const { data, error: fetchError } = await supabase
-        .from(TABLE_NAME)
-        .select("hasFall, fullname")
-        .eq("user_id", user.id)
-        .single();
-
+      // React can initialize this effect more than once in development. Use
+      // a unique topic and stop stale async initializations before they can
+      // configure a channel that was already subscribed.
       if (!isMounted) return;
+      const channelName = `${TABLE_NAME}-changes-${user.id}-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}`;
 
-      if (fetchError) {
-        setError(fetchError.message);
-      } else {
-        const row = data as Record<string, unknown> | null;
-        setHasFall(Boolean(row?.hasFall));
-        setFullname(typeof row?.fullname === "string" ? row.fullname : "");
-      }
-
+      // Subscribe before the initial fetch so an alert raised while the page
+      // is loading cannot be missed between the fetch and subscription.
       channel = supabase
-        .channel(`${TABLE_NAME}-changes-${user.id}`)
+        .channel(channelName)
         .on(
           "postgres_changes",
           {
@@ -76,13 +71,45 @@ export function useFallStatus(): UseFallStatusResult {
             setError(null);
           }
         )
-        .subscribe();
+        .subscribe((status, subscribeError) => {
+          if (!isMounted) return;
+          if (status === "CHANNEL_ERROR") {
+            setError(subscribeError?.message ?? "Realtime connection failed.");
+          }
+        });
+
+      const refreshStatus = async () => {
+        const { data, error: fetchError } = await supabase
+          .from(TABLE_NAME)
+          .select("hasFall, fullname")
+          .eq("user_id", user.id)
+          .single();
+
+        if (!isMounted) return;
+
+        if (fetchError) {
+          setError(fetchError.message);
+          return;
+        }
+
+        const row = data as Record<string, unknown> | null;
+        setHasFall(Boolean(row?.hasFall));
+        setFullname(typeof row?.fullname === "string" ? row.fullname : "");
+      };
+
+      await refreshStatus();
+      if (!isMounted) return;
+
+      // Keep the screen current even when Realtime is not enabled for the
+      // table or the browser temporarily loses its Realtime connection.
+      refreshInterval = setInterval(refreshStatus, 1000);
     };
 
     init();
 
     return () => {
       isMounted = false;
+      if (refreshInterval) clearInterval(refreshInterval);
       if (channel) supabase.removeChannel(channel);
     };
   }, []);

@@ -8,57 +8,27 @@ import BottomNav from "@/components/bottom-nav/BottomNav";
 import { useFallStatus } from "@/hooks/useFullStatus";
 import { createClient } from "@/lib/supabase/client";
 
-interface EventLog {
-  timestamp: string;
-  location?: { lat: number; lng: number } | string;
-  rescueTimestamp?: string | null;
-}
-
 export default function HomePage() {
   const supabase = createClient();
 
   const { hasFall, fullname } = useFallStatus();
 
-  const [manualActive, setManualActive] = useState(false);
+  const [manualActive, setManualActive] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
-  const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const sosActive = hasFall || manualActive;
+  const sosActive = manualActive ?? hasFall;
 
+  // Once the realtime hook receives a new database value, let it become the
+  // source of truth again instead of keeping the previous local override.
   useEffect(() => {
-    const loadCurrentStatus = async () => {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-
-      if (authError || !user) {
-        setError("Could not load your status. Please log in again.");
-        setInitializing(false);
-        return;
-      }
-
-      const { data: row, error: rowError } = await supabase
-        .from("patient_status")
-        .select("hasFall")
-        .eq("user_id", user.id)
-        .single();
-
-      if (rowError) {
-        console.warn("No existing patient_status row yet:", rowError.message);
-      } else {
-        setManualActive(row?.hasFall ?? false);
-      }
-
-      setInitializing(false);
-    };
-
-    loadCurrentStatus();
-  }, [supabase]);
+    setManualActive(null);
+  }, [hasFall]);
 
   const handleSosPress = async () => {
-    const nextState = !manualActive;
+    // Toggle the state the user actually sees. The alert may come from the
+    // device (`hasFall`) rather than the local manual state.
+    const nextState = !sosActive;
     setManualActive(nextState); // optimistic UI update
     setError(null);
     setLoading(true);
@@ -74,71 +44,37 @@ export default function HomePage() {
       }
 
       // Base update: just the hasFall flag
-      const updatePayload: {
-        hasFall: boolean;
-        eventLogs?: EventLog[];
-      } = { hasFall: nextState };
-
-      // Only stamp a rescue when the alert is being turned OFF
-      // (i.e. patient tapped the button to confirm they're safe).
-      if (nextState === false) {
-        const { data: row, error: fetchError } = await supabase
-          .from("patient_status")
-          .select("eventLogs")
-          .eq("user_id", user.id)
-          .single();
-
-        if (fetchError) {
-          throw fetchError;
-        }
-
-        const eventLogs: EventLog[] = Array.isArray(row?.eventLogs) ? row.eventLogs : [];
-
-        // Find the most recent entry that hasn't been rescued yet.
-        let targetIndex = -1;
-        for (let i = eventLogs.length - 1; i >= 0; i--) {
-          if (!eventLogs[i].rescueTimestamp) {
-            targetIndex = i;
-            break;
-          }
-        }
-
-        if (targetIndex !== -1) {
-          const updatedLogs = [...eventLogs];
-          updatedLogs[targetIndex] = {
-            ...updatedLogs[targetIndex],
-            rescueTimestamp: new Date().toISOString(),
-          };
-          updatePayload.eventLogs = updatedLogs;
-        }
-        // If no open entry is found, we just update hasFall and leave
-        // eventLogs untouched — nothing to close out.
-      }
-
       const { error: updateError } = await supabase
         .from("patient_status")
-        .update(updatePayload)
+        .update({ hasFall: nextState })
         .eq("user_id", user.id);
 
       if (updateError) {
         throw updateError;
       }
+
     } catch (err) {
-      console.error("Failed to update hasFall:", err);
+      const errorObject = err as {
+        message?: string;
+        details?: string;
+        hint?: string;
+        code?: string;
+      } | null;
+      const message = [
+        errorObject?.message,
+        errorObject?.details,
+        errorObject?.hint,
+        errorObject?.code ? `code ${errorObject.code}` : undefined,
+      ]
+        .filter(Boolean)
+        .join(" | ") || (err instanceof Error ? err.message : String(err));
+      console.error("Failed to update hasFall:", message);
       setError("Could not send alert. Please try again.");
-      setManualActive((prev) => !prev); // revert optimistic update on failure
+      setManualActive(!nextState); // revert optimistic update on failure
     } finally {
       setLoading(false);
     }
   };
-
-  if (initializing) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-neutral-100">
-        <p className="text-sm text-neutral-500">Loading status...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen flex-col bg-neutral-100">

@@ -10,8 +10,6 @@ interface SensorReading {
   sensors: {
     device_id?: string;
     timestamp?: number;
-    temperature?: number;
-    humidity?: number;
     lat?: string | number;
     lon?: string | number;
   };
@@ -82,6 +80,7 @@ const IncidentReport = () => {
         .select("id, created_at, sensors", { count: "exact" })
         .contains("sensors", { device_id: deviceId })
         .order("created_at", { ascending: false }) // latest first
+        .order("id", { ascending: false }) // stable order for matching timestamps
         .range(from, to);
 
       if (sensorError) {
@@ -144,13 +143,11 @@ const IncidentReport = () => {
     content = (
       <>
         <div className="overflow-x-auto px-5 pt-2">
-          <table className="w-full min-w-[600px] border-collapse text-left text-sm">
+          <table className="w-full min-w-0 border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-neutral-200 text-neutral-500">
                 <th className="py-2 pr-4 font-medium">Detected At</th>
                 <th className="py-2 pr-4 font-medium">Location</th>
-                <th className="py-2 pr-4 font-medium">Temp (°C)</th>
-                <th className="py-2 font-medium">Humidity (%)</th>
               </tr>
             </thead>
             <tbody>
@@ -160,8 +157,6 @@ const IncidentReport = () => {
                   <td className="py-3 pr-4 text-neutral-700">
                     {formatLocation(log.sensors?.lat, log.sensors?.lon)}
                   </td>
-                  <td className="py-3 pr-4 text-neutral-700">{log.sensors?.temperature ?? "—"}</td>
-                  <td className="py-3 text-neutral-700">{log.sensors?.humidity ?? "—"}</td>
                 </tr>
               ))}
             </tbody>
