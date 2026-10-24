@@ -44,14 +44,8 @@ const medicines = [
     description: "Pain relief",
   },
   {
-    key: "betadine",
-    name: "Betadine",
-    image: "/img/img_2.jpg",
-    description: "Antiseptic care",
-  },
-  {
     key: "paracetamol-biogesic",
-    name: "Paracetamol (Biogesic)",
+    name: "Paracetamol Biogesic",
     image: "/img/img_3.jpg",
     description: "Fever relief",
   },
@@ -62,10 +56,16 @@ const medicines = [
     description: "Cold relief",
   },
   {
-    key: "lanke-lande",
-    name: "Lanke Lande",
-    image: "/img/img_5.png",
+    key: "kremel-s",
+    name: "Kremel-S",
+    image: "/img/img_6.jpg",
     description: "Medicine supply",
+  },
+  {
+    key: "loperamide",
+    name: "Loperamide",
+    image: "/img/img_5.png",
+    description: "Digestive relief",
   },
 ];
 

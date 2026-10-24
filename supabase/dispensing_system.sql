@@ -37,10 +37,10 @@ alter table public.medicine_inventory
 insert into public.medicine_inventory (medicine_key, name, image_path)
 values
   ('mefenamic-acid', 'Mefenamic Acid', '/img/img_1.jpg'),
-  ('betadine', 'Betadine', '/img/img_2.jpg'),
-  ('paracetamol-biogesic', 'Paracetamol (Biogesic)', '/img/img_3.jpg'),
-  ('neozep', 'Neozep', '/img/img_4.jpg'),
-  ('lanke-lande', 'Lanke Lande', '/img/img_5.png')
+  ('paracetamol-biogesic', 'Paracetamol Biogesic', '/img/img_2.jpg'),
+  ('neozep', 'Neozep', '/img/img_3.jpg'),
+  ('kremel-s', 'Kremel-S', '/img/img_4.jpg'),
+  ('loperamide', 'Loperamide', '/img/img_5.png')
 on conflict (medicine_key) do update set image_path = excluded.image_path;
 
 create table if not exists public.dispensing_transactions (
