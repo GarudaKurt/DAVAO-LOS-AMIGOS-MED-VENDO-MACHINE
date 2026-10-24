@@ -3,7 +3,7 @@
 update public.medicine_inventory
 set image_path = case medicine_key
   when 'mefenamic-acid' then '/img/img_1.jpg'
-  when 'paracetamol-biogesic' then '/img/img_3jpg'
+  when 'paracetamol-biogesic' then '/img/img_3.jpg'
   when 'neozep' then '/img/img_4.jpg'
   when 'kremel-s' then '/img/img_6.jpg'
   when 'loperamide' then '/img/img_5.png'

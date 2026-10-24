@@ -51,7 +51,7 @@ For password recovery, add the callback URL used by your development server to S
 
 Run `supabase/student_information.sql` in the Supabase SQL Editor before using the Student Information form. It creates a dedicated `student_information` table separate from `patient_status` and applies per-user RLS policies.
 
-Run `supabase/dispensing_system.sql` after the student table migration to create or update the medicine inventory, dispensing transactions, daily limit, atomic dispense RPC, inventory adjustment RPC, dashboard statistics RPC, audit logs, and history policies used by the Admin Dashboard and Screen Display. The Screen Display expects these medicines and images: Mefenamic Acid (`img_1.jpg`), Paracetamol Biogesic (`img_2.jpg`), Neozep (`img_3.jpg`), Kremel-S (`img_4.jpg`), and Loperamide (`img_5.png`).
+Run `supabase/dispensing_system.sql` after the student table migration to create or update the medicine inventory, dispensing transactions, daily limit, atomic dispense RPC, inventory adjustment RPC, dashboard statistics RPC, audit logs, and history policies used by the Admin Dashboard and Screen Display. The Screen Display expects these medicines and images: Mefenamic Acid (`img_1.jpg`), Paracetamol Biogesic (`img_3.jpg`), Neozep (`img_4.jpg`), Kremel-S (`img_6.jpg`), and Loperamide (`img_5.png`).
 
 To securely promote an existing Supabase Auth user, replace the placeholder UUID in `supabase/promote_admin.sql` and run it in the Supabase SQL Editor as a project administrator. Admin authorization uses Supabase `app_metadata`, which cannot be changed by a normal user. Public admin registration also requires the server-only `ADMIN_REGISTRATION_SECRET`; never expose that value to the browser.
 
@@ -60,6 +60,9 @@ Recommended SQL order:
 1. `supabase/student_information.sql`
 2. `supabase/rename_medicine_catalog.sql` if the previous Betadine/Lanke Lande catalog was already created
 3. `supabase/dispensing_system.sql`
-4. `supabase/update_medicine_image_paths.sql` if the previous image paths were already created
-5. `supabase/promote_admin.sql` for the selected administrator only
-6. `supabase/drop_patient_status.sql` only if the legacy table is intentionally being removed
+4. `supabase/medicine_type.sql` for the six-second machine activation state
+5. `supabase/update_medicine_image_paths.sql` if the previous image paths were already created
+6. `supabase/promote_admin.sql` for the selected administrator only
+7. `supabase/drop_patient_status.sql` only if the legacy table is intentionally being removed
+
+The `medicine_type.sql` migration schedules a Supabase Cron cleanup every second. Enable the Supabase Cron/`pg_cron` module before running it if the extension is not already enabled. The activation expiration timestamp and status RPC also reset expired states when the machine or dashboard reads the status, so the browser timer is not the source of truth.

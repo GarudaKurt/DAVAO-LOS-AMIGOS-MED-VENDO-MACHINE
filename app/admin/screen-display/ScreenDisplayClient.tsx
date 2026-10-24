@@ -99,6 +99,9 @@ export default function ScreenDisplayClient() {
   const [confirmMedicine, setConfirmMedicine] = useState<
     (typeof medicines)[number] | null
   >(null);
+  const [activeMedicineKey, setActiveMedicineKey] = useState<string | null>(null);
+  const [activeUntil, setActiveUntil] = useState<string | null>(null);
+  const activationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const loadInventory = async () => {
@@ -118,6 +121,30 @@ export default function ScreenDisplayClient() {
     };
     loadInventory();
   }, [supabase]);
+
+  useEffect(() => {
+    const loadActivationStatus = async () => {
+      const { data, error: activationError } = await supabase.rpc("get_medicine_type_status");
+      if (activationError) return;
+      const status = Array.isArray(data) ? data[0] : data;
+      setActiveMedicineKey(status?.active_medicine_key ?? null);
+      setActiveUntil(status?.active_until ?? null);
+    };
+    loadActivationStatus();
+  }, [supabase]);
+
+  useEffect(() => {
+    if (activationTimer.current) clearTimeout(activationTimer.current);
+    if (!activeUntil) return;
+    const delay = Math.max(new Date(activeUntil).getTime() - Date.now() + 250, 250);
+    activationTimer.current = setTimeout(async () => {
+      const { data } = await supabase.rpc("get_medicine_type_status");
+      const status = Array.isArray(data) ? data[0] : data;
+      setActiveMedicineKey(status?.active_medicine_key ?? null);
+      setActiveUntil(status?.active_until ?? null);
+    }, delay);
+    return () => { if (activationTimer.current) clearTimeout(activationTimer.current); };
+  }, [activeUntil, supabase]);
 
   const inventoryByKey = useMemo(
     () => new Map(inventory.map((item) => [item.medicine_key, item])),
@@ -223,6 +250,15 @@ export default function ScreenDisplayClient() {
       setProcessing(false);
       return;
     }
+    const { data: activationData, error: activationError } = await supabase.rpc("activate_medicine_type", { p_medicine_key: medicine.key });
+    if (activationError) {
+      setError("Dispensing was recorded, but the medicine machine activation could not be started.");
+      setProcessing(false);
+      return;
+    }
+    const activation = Array.isArray(activationData) ? activationData[0] : activationData;
+    setActiveMedicineKey(activation?.active_medicine_key ?? medicine.key);
+    setActiveUntil(activation?.active_until ?? new Date(Date.now() + 6000).toISOString());
     setInventory((current) =>
       current.map((item) =>
         item.id === stock.id
@@ -369,6 +405,7 @@ export default function ScreenDisplayClient() {
             const item = inventoryByKey.get(medicine.key);
             const disabled =
               !studentUserId ||
+              Boolean(activeMedicineKey) ||
               processing ||
               remaining === 0 ||
               !item ||
@@ -379,8 +416,9 @@ export default function ScreenDisplayClient() {
                 key={medicine.key}
                 type="button"
                 disabled={disabled}
+                aria-pressed={activeMedicineKey === medicine.key}
                 onClick={() => handleDispense(medicine)}
-                className="flex min-h-32 items-center gap-4 rounded-2xl border bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--color-primary-soft)] hover:shadow-md active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0"
+                className={`flex min-h-32 items-center gap-4 rounded-2xl border bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--color-primary-soft)] hover:shadow-md active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 ${activeMedicineKey === medicine.key ? "border-[var(--color-primary)] ring-2 ring-[var(--color-primary-soft)]" : ""}`}
               >
                 <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[var(--color-primary-wash)]">
                   <img
@@ -407,7 +445,9 @@ export default function ScreenDisplayClient() {
                     {medicine.description}
                   </span>
                   <span className="mt-3 block text-xs font-semibold text-[var(--color-primary-strong)]">
-                    {!studentUserId
+                    {activeMedicineKey === medicine.key
+                      ? "Active for machine · 6 seconds"
+                      : !studentUserId
                       ? "Verify student first"
                       : !item
                         ? "Unavailable"

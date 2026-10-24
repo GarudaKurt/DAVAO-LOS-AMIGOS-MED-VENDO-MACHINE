@@ -25,7 +25,7 @@ export default function InventoryClient() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [reason, setReason] = useState("");
-  const imagePaths: Record<string, string> = { "mefenamic-acid": "/img/img_1.jpg", "paracetamol-biogesic": "/img/img_2.jpg", neozep: "/img/img_3.jpg", "kremel-s": "/img/img_4.jpg", loperamide: "/img/img_5.png" };
+  const imagePaths: Record<string, string> = { "mefenamic-acid": "/img/img_1.jpg", "paracetamol-biogesic": "/img/img_3.jpg", neozep: "/img/img_4.jpg", "kremel-s": "/img/img_6.jpg", loperamide: "/img/img_5.png" };
 
   useEffect(() => {
     const loadInventory = async () => {
