@@ -1,0 +1,13 @@
+import { Boxes, Monitor, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import AdminStats from "./AdminStats";
+
+export default async function AdminPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || user.app_metadata?.role !== "admin") redirect("/home");
+
+  return <main className="min-h-screen bg-[#fbf9fa] px-5 py-8 sm:px-8"><div className="mx-auto max-w-5xl"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white"><ShieldCheck className="h-5 w-5" aria-hidden="true" /></div><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-primary-strong)]">Admin workspace</p><h1 className="text-2xl font-bold tracking-tight text-[var(--color-ink)]">Medicine machine dashboard</h1></div></div><p className="mt-4 max-w-xl text-sm leading-6 text-[var(--color-muted)]">Inventory and screen display controls belong here for authorized administrators.</p><AdminStats /><div className="mt-8 grid gap-5 md:grid-cols-2"><Link href="/admin/inventory" className="group rounded-3xl border bg-white p-6 shadow-[0_12px_40px_rgba(62,31,46,0.06)] transition hover:-translate-y-0.5 hover:border-[var(--color-primary-soft)] hover:shadow-[0_16px_46px_rgba(62,31,46,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"><Boxes className="h-6 w-6 text-[var(--color-primary-strong)]" aria-hidden="true" /><h2 className="mt-5 font-semibold text-[var(--color-ink)]">Inventory</h2><p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">Manage medicine stock and availability.</p><span className="mt-5 inline-flex text-sm font-semibold text-[var(--color-primary-strong)]">Open inventory →</span></Link><Link href="/admin/screen-display" className="group rounded-3xl border bg-white p-6 shadow-[0_12px_40px_rgba(62,31,46,0.06)] transition hover:-translate-y-0.5 hover:border-[var(--color-primary-soft)] hover:shadow-[0_16px_46px_rgba(62,31,46,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"><Monitor className="h-6 w-6 text-[var(--color-primary-strong)]" aria-hidden="true" /><h2 className="mt-5 font-semibold text-[var(--color-ink)]">Screen Display</h2><p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">Configure what the medicine machine displays.</p><span className="mt-5 inline-flex text-sm font-semibold text-[var(--color-primary-strong)]">Open screen display →</span></Link></div></div></main>;
+}

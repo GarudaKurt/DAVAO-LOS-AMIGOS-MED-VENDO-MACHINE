@@ -4,6 +4,7 @@ import PageHeader from "@/components/page-header/PageHeader";
 import MenuRow from "@/components/menu-row/MenuRow";
 import BottomNav from "@/components/bottom-nav/BottomNav";
 const MENU_ITEMS = [
+  { label: "Student Records", href: "/students" },
   { label: "Account Details", href: "/profile/account-details" },
   { label: "Setup SoS", href: "/profile/setup-sos" },
 ];
@@ -27,7 +28,7 @@ const handleLogout = () => {
         <button
           type="button"
           onClick={handleLogout}
-          className="mt-8 w-full rounded-full border border-red-300 bg-white py-3.5 text-sm font-semibold text-red-500 transition hover:bg-red-50"
+          className="mt-8 w-full rounded-xl border border-[var(--color-primary-soft)] bg-white py-3.5 text-sm font-semibold text-[var(--color-primary-strong)] transition hover:bg-[var(--color-primary-wash)]"
         >
           Logout
         </button>

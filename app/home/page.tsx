@@ -1,111 +1,62 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import HomeHeader from "@/components/home-header/HomeHeader";
-import SosButton from "@/components/sos-button/SosAlert";
-import StatusIndicator from "@/components/status-indicator/StatusIndicator";
 import BottomNav from "@/components/bottom-nav/BottomNav";
-import { useFallStatus } from "@/hooks/useFullStatus";
+import StudentInformationSheet, { StudentInformationValues } from "@/components/student-information/StudentInformationSheet";
 import { createClient } from "@/lib/supabase/client";
 
 export default function HomePage() {
-  const supabase = createClient();
+  const router = useRouter();
+  const supabase = useRef(createClient()).current;
+  const [loading, setLoading] = useState(true);
+  const [name, setName] = useState("");
+  const [grade, setGrade] = useState("");
+  const [section, setSection] = useState("");
+  const [error, setError] = useState("");
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  const { hasFall, fullname } = useFallStatus();
-
-  const [manualActive, setManualActive] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const sosActive = manualActive ?? hasFall;
-
-  // Once the realtime hook receives a new database value, let it become the
-  // source of truth again instead of keeping the previous local override.
   useEffect(() => {
-    setManualActive(null);
-  }, [hasFall]);
-
-  const handleSosPress = async () => {
-    // Toggle the state the user actually sees. The alert may come from the
-    // device (`hasFall`) rather than the local manual state.
-    const nextState = !sosActive;
-    setManualActive(nextState); // optimistic UI update
-    setError(null);
-    setLoading(true);
-
-    try {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-
-      if (authError || !user) {
-        throw new Error("No authenticated user found.");
-      }
-
-      // Base update: just the hasFall flag
-      const { error: updateError } = await supabase
-        .from("patient_status")
-        .update({ hasFall: nextState })
-        .eq("user_id", user.id);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-    } catch (err) {
-      const errorObject = err as {
-        message?: string;
-        details?: string;
-        hint?: string;
-        code?: string;
-      } | null;
-      const message = [
-        errorObject?.message,
-        errorObject?.details,
-        errorObject?.hint,
-        errorObject?.code ? `code ${errorObject.code}` : undefined,
-      ]
-        .filter(Boolean)
-        .join(" | ") || (err instanceof Error ? err.message : String(err));
-      console.error("Failed to update hasFall:", message);
-      setError("Could not send alert. Please try again.");
-      setManualActive(!nextState); // revert optimistic update on failure
-    } finally {
+    const loadStudent = async () => {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) { router.replace("/login"); return; }
+      if (user.app_metadata?.role === "admin") { router.replace("/admin"); return; }
+      const { data, error: studentError } = await supabase.from("student_information").select("full_name, grade, section").eq("user_id", user.id).maybeSingle();
+      if (studentError) console.warn("Student profile row is not available yet:", studentError.message);
+      setName(data?.full_name ?? "");
+      setGrade(data?.grade != null ? String(data.grade) : "");
+      setSection(data?.section ?? "");
       setLoading(false);
-    }
+    };
+    loadStudent();
+  }, [router, supabase]);
+
+  const studentInfo: StudentInformationValues = { fullName: name, grade, section };
+  const hasStudentInfo = Boolean(name.trim() && grade && section);
+  const handleStudentSaved = async (student: { fullName: string; grade: string; section: string }) => {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) throw new Error("Your session expired. Please log in again.");
+    const { error: profileError } = await supabase.from("student_information").upsert({ user_id: user.id, full_name: student.fullName, grade: Number(student.grade), section: student.section }, { onConflict: "user_id" });
+    if (profileError) throw profileError;
+    setName(student.fullName);
+    setGrade(student.grade);
+    setSection(student.section);
   };
 
-  return (
-    <div className="flex min-h-screen flex-col bg-neutral-100">
-      <HomeHeader name={fullname || "there"} hasNotification />
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    setError("");
+    const { error: logoutError } = await supabase.auth.signOut();
+    if (logoutError) {
+      setLoggingOut(false);
+      setError("We could not log you out. Please try again.");
+      return;
+    }
+    router.replace("/login");
+    router.refresh();
+  };
 
-      <main className="flex flex-1 flex-col items-center px-6 pt-6 text-center">
-        <StatusIndicator alert={sosActive} />
-
-        {sosActive ? (
-          <p className="mt-3 text-sm text-neutral-600">
-            <span className="font-semibold text-red-500">Alert sent.</span> Help is on
-            the way — stay where you are if possible.
-          </p>
-        ) : (
-          <p className="mt-3 text-sm text-neutral-600">
-            Help is just is in everywhere! If{" "}
-            <span className="font-semibold text-red-500">SOS alert</span> occurs someone
-            call the help.
-          </p>
-        )}
-
-        {error && (
-          <p className="mt-2 text-sm font-medium text-red-600">{error}</p>
-        )}
-
-        <div className="flex flex-1 items-center justify-center">
-          <SosButton active={sosActive} onPress={handleSosPress}/>
-        </div>
-      </main>
-
-      <BottomNav />
-    </div>
-  );
+  return <div className="flex min-h-screen flex-col bg-[#fbf9fa]"><HomeHeader name={name || "Student"} onLogout={handleLogout} loggingOut={loggingOut} /><main className="mx-auto w-full max-w-3xl flex-1 px-5 pb-8 pt-8 sm:px-8"><div className="mb-8"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-primary-strong)]">Student home</p><h1 className="mt-2 text-3xl font-bold tracking-tight text-[var(--color-ink)] sm:text-4xl">Welcome to Vendo Medicine Machine.</h1><p className="mt-3 max-w-xl text-sm leading-6 text-[var(--color-muted)]">Keep your student information up to date so the Los Amigos SHS dispensing service can identify you correctly.</p></div>{loading ? <div className="rounded-3xl border bg-white p-8 text-center text-sm text-[var(--color-muted)]">Loading your information...</div> : error ? <div className="rounded-3xl border bg-white p-6 text-sm text-red-700">{error}</div> : hasStudentInfo ? <section className="rounded-3xl border bg-white p-5 shadow-[0_12px_40px_rgba(62,31,46,0.06)] sm:p-7"><div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-primary-strong)]">Student information</p><h2 className="mt-2 text-xl font-bold text-[var(--color-ink)]">Your details are saved.</h2></div><StudentInformationSheet initialValues={studentInfo} title="Edit Student Info" triggerLabel="Edit Student Info" onStudentAdded={handleStudentSaved} /></div><dl className="mt-7 grid gap-4 border-t pt-5 sm:grid-cols-3"><div><dt className="text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">Student Name</dt><dd className="mt-1 font-semibold text-[var(--color-ink)]">{name}</dd></div><div><dt className="text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">Grade</dt><dd className="mt-1 font-semibold text-[var(--color-ink)]">Grade {grade}</dd></div><div><dt className="text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">Section</dt><dd className="mt-1 font-semibold text-[var(--color-ink)]">Section {section}</dd></div></dl></section> : <section className="rounded-3xl border bg-white p-6 shadow-[0_12px_40px_rgba(62,31,46,0.06)] sm:p-8"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-primary-strong)]">Get started</p><h2 className="mt-2 text-xl font-bold text-[var(--color-ink)]">Create your student information.</h2><p className="mt-2 max-w-lg text-sm leading-6 text-[var(--color-muted)]">Add your Student Name, Grade, and Section so the medicine dispensing system can recognize your account.</p><div className="mt-6"><StudentInformationSheet initialValues={studentInfo} title="Create Student Info" triggerLabel="Create Student Info" onStudentAdded={handleStudentSaved} /></div></section>}</main><BottomNav /></div>;
 }

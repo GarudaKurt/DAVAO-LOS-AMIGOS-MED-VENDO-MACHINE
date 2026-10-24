@@ -15,7 +15,7 @@ export default function ToggleField({ label, className, ...props }: ToggleFieldP
           {...props}
           className="peer sr-only"
         />
-        <span className="absolute inset-0 rounded-full bg-neutral-300 transition peer-checked:bg-red-500" />
+        <span className="absolute inset-0 rounded-full bg-neutral-300 transition peer-checked:bg-[var(--color-primary)]" />
         <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
       </span>
     </label>

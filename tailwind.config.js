@@ -14,8 +14,8 @@ module.exports = {
           "100%": { transform: "scale(1.7)", opacity: "0" },
         },
         "sos-pulse-glow": {
-          "0%, 100%": { boxShadow: "0 0 0 0 rgba(220, 38, 38, 0.55)" },
-          "50%": { boxShadow: "0 0 0 18px rgba(220, 38, 38, 0)" },
+          "0%, 100%": { boxShadow: "0 0 0 0 rgba(201, 79, 124, 0.55)" },
+          "50%": { boxShadow: "0 0 0 18px rgba(201, 79, 124, 0)" },
         },
       },
       animation: {

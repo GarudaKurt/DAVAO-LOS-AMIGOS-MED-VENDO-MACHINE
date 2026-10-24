@@ -124,7 +124,7 @@ export default function AccountDetailsPage() {
             trailing={
               <button
                 type="button"
-                className="text-xs font-semibold text-red-500 hover:underline"
+                className="text-xs font-semibold text-[var(--color-primary-strong)] hover:underline"
               >
                 Verify
               </button>
@@ -153,7 +153,7 @@ export default function AccountDetailsPage() {
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 rounded-full bg-red-500 py-3.5 text-sm font-semibold text-white shadow-md shadow-red-200 transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+            className="primary-button flex-1 rounded-xl py-3.5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? "Saving..." : "Save"}
           </button>

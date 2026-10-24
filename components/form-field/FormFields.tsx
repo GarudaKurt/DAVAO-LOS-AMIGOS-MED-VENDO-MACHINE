@@ -14,7 +14,7 @@ export default function FormField({ label, icon: Icon, trailing, ...props }: For
       <label className="mb-2 block text-sm font-medium text-neutral-800">
         {label}
       </label>
-      <div className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3.5 focus-within:border-red-400 focus-within:ring-2 focus-within:ring-red-100 transition">
+      <div className="auth-field flex items-center gap-3 rounded-xl border bg-neutral-50 px-4 py-3.5">
         {Icon && <Icon className="h-4 w-4 shrink-0 text-neutral-400" strokeWidth={2} />}
         <input
           {...props}
